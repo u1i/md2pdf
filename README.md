@@ -1,6 +1,6 @@
-# PDF Generation Setup
+# PDF Generation from Markdown with Custom Fonts
 
-This setup allows you to convert Markdown files to beautifully styled PDFs with custom fonts.
+This tool allows you to convert Markdown files to beautifully styled PDFs with custom fonts.
 
 ## Requirements
 
@@ -15,8 +15,6 @@ This setup allows you to convert Markdown files to beautifully styled PDFs with 
    ```bash
    brew install weasyprint
    ```
-
-## Files to Copy
 
 The following files are needed:
 
