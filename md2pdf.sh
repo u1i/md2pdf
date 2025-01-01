@@ -107,7 +107,7 @@ cat > default.html5 << EOF
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=${HEADLINE_FONT}:wght@400;700&family=${BODY_FONT}:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=${HEADLINE_FONT}:wght@400;700&family=${BODY_FONT}:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   \$for(css)\$
   <link rel="stylesheet" href="\$css\$" />
   \$endfor\$
@@ -127,6 +127,9 @@ body {
     font-family: '${BODY_FONT_CSS}', system-ui, -apple-system, sans-serif;
     font-size: 10pt;
     line-height: 1.6;
+    max-width: 50em;
+    margin: 0 auto;
+    padding: 1em;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -146,10 +149,36 @@ h3 {
     font-size: 12pt;
 }
 
+/* Code blocks */
+pre {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1em;
+    margin: 1em 0;
+    overflow-x: auto;
+}
+
+code {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9pt;
+    background-color: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+pre code {
+    padding: 0;
+    background-color: transparent;
+    border-radius: 0;
+    font-size: 9pt;
+    line-height: 1.4;
+}
+
+/* Tables */
 table {
-    font-size: 8pt;
-    margin-top: 1.5em;
-    margin-bottom: 1.5em;
+    font-size: 9pt;
+    margin: 1.5em 0;
     border-collapse: collapse;
     width: 100%;
 }
@@ -161,20 +190,36 @@ th, td {
 }
 
 th {
-    background-color: #f2f2f2;
+    background-color: #f5f5f5;
     font-weight: bold;
 }
 
-tr:not(:last-child) td {
-    padding-bottom: 8px;
+tr:nth-child(even) {
+    background-color: #fafafa;
 }
 
+/* Lists */
 li {
     line-height: 1.6;
+    margin: 0.3em 0;
 }
 
-code {
-    font-family: 'Courier New', monospace;
+/* Links */
+a {
+    color: #2962ff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Blockquotes */
+blockquote {
+    margin: 1em 0;
+    padding-left: 1em;
+    border-left: 4px solid #ddd;
+    color: #666;
 }
 EOF
 
@@ -182,7 +227,7 @@ EOF
 export OPENSSL_CONF=/dev/null
 
 # Build pandoc command
-PANDOC_CMD="pandoc \"$INPUT_FILE\" -o \"$OUTPUT_FILE\" --pdf-engine=weasyprint --css=./markdown.css --metadata title=\"$TITLE\" -V geometry:margin=1in --template=default.html5"
+PANDOC_CMD="pandoc \"$INPUT_FILE\" -o \"$OUTPUT_FILE\" --pdf-engine=weasyprint --css=./markdown.css --metadata title=\"$TITLE\" -V geometry:margin=1in --template=default.html5 --highlight-style=pygments"
 
 # Add link conversion if enabled
 if [ "$CONVERT_LINKS" = true ]; then
