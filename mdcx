@@ -2,17 +2,14 @@
 
 # mdcx - Convert Markdown to professional documents (PDF, DOCX)
 #
-# Usage: mdcx [-h] <command> [options] input.md output.{pdf,docx}
-#
-# Commands:
-#   pdf   Convert to PDF with custom styling
-#   docx  Convert to Word document
-#   help  Show this help message
+# Usage:
+#   mdcx pdf [options] input.md output.pdf
+#   mdcx docx input.md output.docx
 #
 # PDF Options:
-#   -d, --headline FONT    Headline font (default: EB+Garamond)
-#   -b, --body FONT       Body font (default: Open+Sans)
-#   -n, --no-links       Keep .md links instead of converting
+#   -d, --headline FONT    Set headline font (default: EB+Garamond)
+#   -b, --body FONT       Set body font (default: Open+Sans)
+#   -n, --no-links        Keep .md links instead of converting to .pdf
 #
 # DOCX Options:
 #   -s, --style STYLE     Document style (default: modern)
@@ -219,23 +216,33 @@ convert_to_docx() {
     # Create reference doc based on style
     pandoc -o "$TEMP_DIR/reference.docx" --print-default-data-file reference.docx
 
-    # Extract title
+    # Extract title and create content without first heading
     TITLE=$(grep "^# " "$input" | head -n 1 | sed 's/^# //')
     if [ -z "$TITLE" ]; then
         TITLE=$(basename "$input" .md)
     fi
 
+    # Create a temporary copy of the input file without the first H1
+    awk '
+        BEGIN {first_heading=0}
+        /^# / {
+            if (first_heading == 0) {
+                first_heading=1
+                next
+            }
+        }
+        {print}
+    ' "$input" > "$TEMP_DIR/content.md"
+
     # Create link filter
     create_link_filter "docx"
 
-    # Convert to Word
-    pandoc "$input" \
+    # Convert to Word with system defaults
+    pandoc "$TEMP_DIR/content.md" \
         -o "$output" \
         --reference-doc="$TEMP_DIR/reference.docx" \
         --lua-filter="$TEMP_DIR/fix-links.lua" \
         --metadata title="$TITLE" \
-        --toc \
-        --toc-depth=3 \
         --highlight-style=pygments
 }
 

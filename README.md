@@ -2,6 +2,8 @@
 
 Convert Markdown files to professional documents (PDF and Word)
 
+> ⚠️ Currently only tested and supported on macOS.
+
 ## Requirements
 
 1. Install pandoc:
@@ -40,25 +42,33 @@ mdcx pdf -d "Playfair+Display" -b "Source+Serif+Pro" input.md output.pdf
 mdcx pdf -n input.md output.pdf
 ```
 
-Options:
+PDF Options:
 - `-d, --headline FONT` - Set headline font (default: EB+Garamond)
 - `-b, --body FONT` - Set body font (default: Open+Sans)
 - `-n, --no-links` - Keep .md links instead of converting to .pdf
 
 ### Word Conversion
 
-Convert Markdown to Word documents with predefined styles:
+Convert Markdown to Word documents:
 
 ```bash
-# Default modern style
 mdcx docx input.md output.docx
-
-# Academic style
-mdcx docx -s academic input.md output.docx
 ```
 
-Options:
-- `-s, --style STYLE` - Set document style (modern, academic, minimal)
+The Word output uses default system fonts and styles for better compatibility. Links are automatically converted from .md to .docx.
+
+Markdown elements are mapped to corresponding Word styles:
+- `# Heading` → Heading 1
+- `## Heading` → Heading 2
+- `### Heading` → Heading 3
+- Code blocks → Code style
+- Blockquotes → Quote style
+- Lists → List styles
+
+This makes the document fully editable in Word, with proper document structure and navigation. Users can:
+- Use Word's navigation pane to jump between sections
+- Modify all headings of a certain level by changing the style
+- Update document formatting using Word's style system
 
 ### Font Combinations for PDF
 
@@ -79,11 +89,9 @@ Options:
 
 ## Features
 
-- Convert Markdown to PDF or DOCX
-- Beautiful typography with Google Fonts (PDF)
+- PDF output with customizable Google Fonts
+- Word output with system fonts for compatibility
 - Code syntax highlighting
-- Professional document styles
-- Automatic table of contents (DOCX)
 - Link conversion (.md → .pdf/.docx)
 - Clean temporary file handling
 
