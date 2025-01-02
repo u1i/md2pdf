@@ -1,6 +1,6 @@
-# Markdown Document Converter
+# mdcx
 
-Convert Markdown files to beautifully styled PDFs and Word documents.
+Convert Markdown files to professional documents (PDF and Word)
 
 ## Requirements
 
@@ -14,25 +14,53 @@ Convert Markdown files to beautifully styled PDFs and Word documents.
    brew install weasyprint
    ```
 
-3. For Word conversion, no additional tools needed (pandoc includes docx support)
+## Usage
 
-## PDF Conversion (md2pdf.sh)
+Basic usage:
+```bash
+# Convert to PDF
+mdcx pdf input.md output.pdf
+
+# Convert to Word document
+mdcx docx input.md output.docx
+```
+
+### PDF Conversion
 
 Convert Markdown to PDF with custom Google Fonts:
 
 ```bash
-./md2pdf.sh input.md output.pdf
+# Default style (EB Garamond headlines, Open Sans body)
+mdcx pdf input.md output.pdf
+
+# Custom fonts
+mdcx pdf -d "Playfair+Display" -b "Source+Serif+Pro" input.md output.pdf
+
+# Keep original .md links
+mdcx pdf -n input.md output.pdf
 ```
 
 Options:
 - `-d, --headline FONT` - Set headline font (default: EB+Garamond)
 - `-b, --body FONT` - Set body font (default: Open+Sans)
 - `-n, --no-links` - Keep .md links instead of converting to .pdf
-- `-h, --help` - Show help with font combinations
 
-### PDF Font Combinations
+### Word Conversion
 
-The PDF converter includes several curated font combinations:
+Convert Markdown to Word documents with predefined styles:
+
+```bash
+# Default modern style
+mdcx docx input.md output.docx
+
+# Academic style
+mdcx docx -s academic input.md output.docx
+```
+
+Options:
+- `-s, --style STYLE` - Set document style (modern, academic, minimal)
+
+### Font Combinations for PDF
 
 #### Classic combinations:
 - Playfair Display + Source Serif Pro (Elegant, traditional)
@@ -49,52 +77,27 @@ The PDF converter includes several curated font combinations:
 - Cormorant + EB Garamond (Scholarly, traditional)
 - Spectral + IBM Plex Serif (Technical, precise)
 
-## Word Conversion (md2docx.sh)
-
-Convert Markdown to Word documents with predefined styles:
-
-```bash
-./md2docx.sh input.md output.docx
-```
-
-Options:
-- `-s, --style STYLE` - Set document style (default: modern)
-  - Available styles: modern, academic, minimal
-- `-h, --help` - Show help message
-
-### Word Document Features
-
-- Automatic table of contents
-- Code syntax highlighting
-- Consistent styling across documents
-- Automatic conversion of .md links to .docx
-- Professional typography and spacing
-
 ## Features
 
-Both converters support:
-- Link conversion (.md → .pdf/.docx)
+- Convert Markdown to PDF or DOCX
+- Beautiful typography with Google Fonts (PDF)
 - Code syntax highlighting
-- Tables and lists
-- Block quotes
-- Automatic title extraction from first H1
+- Professional document styles
+- Automatic table of contents (DOCX)
+- Link conversion (.md → .pdf/.docx)
 - Clean temporary file handling
 
 ## Examples
 
-Convert to PDF with custom fonts:
+Convert a single file:
 ```bash
-./md2pdf.sh -d "Playfair+Display" -b "Source+Serif+Pro" input.md output.pdf
-```
-
-Convert to Word with academic style:
-```bash
-./md2docx.sh -s academic input.md output.docx
+mdcx pdf document.md document.pdf
+mdcx docx document.md document.docx
 ```
 
 Convert multiple files:
 ```bash
 for f in *.md; do
-    ./md2pdf.sh "$f" "${f%.md}.pdf"
-    ./md2docx.sh "$f" "${f%.md}.docx"
+    mdcx pdf "$f" "${f%.md}.pdf"
+    mdcx docx "$f" "${f%.md}.docx"
 done

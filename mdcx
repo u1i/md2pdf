@@ -1,0 +1,318 @@
+#!/bin/bash
+
+# mdcx - Convert Markdown to professional documents (PDF, DOCX)
+#
+# Usage: mdcx [-h] <command> [options] input.md output.{pdf,docx}
+#
+# Commands:
+#   pdf   Convert to PDF with custom styling
+#   docx  Convert to Word document
+#   help  Show this help message
+#
+# PDF Options:
+#   -d, --headline FONT    Headline font (default: EB+Garamond)
+#   -b, --body FONT       Body font (default: Open+Sans)
+#   -n, --no-links       Keep .md links instead of converting
+#
+# DOCX Options:
+#   -s, --style STYLE     Document style (default: modern)
+#                        Available: modern, academic, minimal
+#
+# Global Options:
+#   -h, --help           Show this help message
+#
+# Examples:
+#   mdcx pdf input.md output.pdf
+#   mdcx pdf -d "Playfair+Display" -b "Source+Serif+Pro" input.md output.pdf
+#   mdcx docx -s academic input.md output.docx
+#
+# Requirements:
+# - pandoc
+# - weasyprint (for PDF conversion)
+# - Internet connection (for Google Fonts in PDF)
+
+# Default settings
+HEADLINE_FONT="EB+Garamond"
+BODY_FONT="Open+Sans"
+CONVERT_LINKS=true
+STYLE="modern"
+
+# Create temporary directory
+create_temp_dir() {
+    TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT
+}
+
+# Show help
+show_help() {
+    sed -n '/^# Usage:/,/^# Requirements:/p' "$0" | sed 's/^# //'
+    exit 1
+}
+
+# Create Lua filter for converting links
+create_link_filter() {
+    local ext=$1
+    cat > "$TEMP_DIR/fix-links.lua" << EOF
+-- Fix-links filter: Convert .md links to .$ext
+function Link(el)
+    -- Check if link ends with .md
+    if el.target:match("%.md\$") then
+        -- Replace .md with .$ext
+        el.target = el.target:gsub("%.md\$", ".$ext")
+    end
+    return el
+end
+EOF
+}
+
+# PDF conversion function
+convert_to_pdf() {
+    local input=$1
+    local output=$2
+
+    # Extract title
+    TITLE=$(grep "^# " "$input" | head -n 1 | sed 's/^# //')
+    if [ -z "$TITLE" ]; then
+        TITLE=$(basename "$input" .md)
+    fi
+
+    # Create HTML template
+    cat > "$TEMP_DIR/default.html5" << EOF
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="\$lang\$" xml:lang="\$lang\$"\$if(dir)\$ dir="\$dir\$"\$endif\$>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=${HEADLINE_FONT}:wght@400;700&family=${BODY_FONT}:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  \$for(css)\$
+  <link rel="stylesheet" href="\$css\$" />
+  \$endfor\$
+</head>
+<body>
+\$body\$
+</body>
+</html>
+EOF
+
+    # Create CSS
+    HEADLINE_FONT_CSS=$(echo $HEADLINE_FONT | tr '+' ' ')
+    BODY_FONT_CSS=$(echo $BODY_FONT | tr '+' ' ')
+
+    cat > "$TEMP_DIR/markdown.css" << EOF
+body {
+    font-family: '${BODY_FONT_CSS}', system-ui, -apple-system, sans-serif;
+    font-size: 10pt;
+    line-height: 1.6;
+    max-width: 50em;
+    margin: 0 auto;
+    padding: 1em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: '${HEADLINE_FONT_CSS}', system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+}
+
+h1 { font-size: 24pt; }
+h2 { font-size: 16pt; }
+h3 { font-size: 12pt; }
+
+pre {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1em;
+    margin: 1em 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 100%;
+}
+
+code {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9pt;
+    background-color: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+pre code {
+    padding: 0;
+    background-color: transparent;
+    border-radius: 0;
+    font-size: 9pt;
+    line-height: 1.4;
+}
+
+table {
+    font-size: 9pt;
+    margin: 1.5em 0;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+li {
+    line-height: 1.6;
+    margin: 0.3em 0;
+}
+
+a {
+    color: #2962ff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+blockquote {
+    margin: 1em 0;
+    padding-left: 1em;
+    border-left: 4px solid #ddd;
+    color: #666;
+}
+EOF
+
+    # Create link filter if needed
+    if [ "$CONVERT_LINKS" = true ]; then
+        create_link_filter "pdf"
+        LINK_FILTER="--lua-filter=$TEMP_DIR/fix-links.lua"
+    else
+        LINK_FILTER=""
+    fi
+
+    # Convert to PDF
+    export OPENSSL_CONF=/dev/null
+    pandoc "$input" \
+        -o "$output" \
+        --pdf-engine=weasyprint \
+        --css="$TEMP_DIR/markdown.css" \
+        --metadata title="$TITLE" \
+        -V geometry:margin=1in \
+        --template="$TEMP_DIR/default.html5" \
+        --highlight-style=pygments \
+        $LINK_FILTER
+}
+
+# Word conversion function
+convert_to_docx() {
+    local input=$1
+    local output=$2
+
+    # Create reference doc based on style
+    pandoc -o "$TEMP_DIR/reference.docx" --print-default-data-file reference.docx
+
+    # Extract title
+    TITLE=$(grep "^# " "$input" | head -n 1 | sed 's/^# //')
+    if [ -z "$TITLE" ]; then
+        TITLE=$(basename "$input" .md)
+    fi
+
+    # Create link filter
+    create_link_filter "docx"
+
+    # Convert to Word
+    pandoc "$input" \
+        -o "$output" \
+        --reference-doc="$TEMP_DIR/reference.docx" \
+        --lua-filter="$TEMP_DIR/fix-links.lua" \
+        --metadata title="$TITLE" \
+        --toc \
+        --toc-depth=3 \
+        --highlight-style=pygments
+}
+
+# Parse command line arguments
+COMMAND=$1
+shift
+
+# Create temporary directory at the start
+create_temp_dir
+
+case $COMMAND in
+    pdf)
+        # Parse PDF-specific options
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                -h|--help)
+                    show_help
+                    ;;
+                -d|--headline)
+                    HEADLINE_FONT="$2"
+                    shift 2
+                    ;;
+                -b|--body)
+                    BODY_FONT="$2"
+                    shift 2
+                    ;;
+                -n|--no-links)
+                    CONVERT_LINKS=false
+                    shift
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+
+        # Check for input and output files
+        if [ $# -ne 2 ]; then
+            show_help
+        fi
+
+        convert_to_pdf "$1" "$2"
+        ;;
+
+    docx)
+        # Parse DOCX-specific options
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                -h|--help)
+                    show_help
+                    ;;
+                -s|--style)
+                    STYLE="$2"
+                    shift 2
+                    ;;
+                *)
+                    break
+                    ;;
+            esac
+        done
+
+        # Check for input and output files
+        if [ $# -ne 2 ]; then
+            show_help
+        fi
+
+        convert_to_docx "$1" "$2"
+        ;;
+
+    help|--help|-h)
+        show_help
+        ;;
+
+    *)
+        echo "Unknown command: $COMMAND"
+        show_help
+        ;;
+esac
+
+# Temporary directory will be automatically cleaned up by the trap
